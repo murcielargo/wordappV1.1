@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+
+{% block title %}首页 - 背单词应用{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <!-- 用户信息和签到区域 -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h5>👋 欢迎回来！</h5>
+                        <p class="mb-0">积分：<span id="user-points" class="text-primary fw-bold">0</span></p>
+                        <p class="mb-0">连续签到：<span id="consecutive-days" class="text-success fw-bold">0</span> 天</p>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <button id="check-in-btn" class="btn btn-warning btn-lg">
+                            📅 每日签到
+                        </button>
+                        <a href="/vocabulary" class="btn btn-outline-info ms-2">词库管理</a>
+                        <a href="/logout" class="btn btn-outline-secondary ms-2">退出登录</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-body text-center">
+                <h1 class="card-title mb-4">📚 背单词应用</h1>
+                <p class="card-text lead">基于艾宾浩斯遗忘曲线的智能学习系统</p>
+                
+                <!-- 学习统计 -->
+                <div class="row mt-4">
+                    <div class="col-md-3">
+                        <div class="stats-card">
+                            <h3 class="text-primary" id="total-words">0</h3>
+                            <small>总单词数</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stats-card">
+                            <h3 class="text-success" id="learned-words">0</h3>
+                            <small>已学习</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stats-card">
+                            <h3 class="text-warning" id="review-words">0</h3>
+                            <small>待复习</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stats-card">
+                            <h3 class="text-info" id="units-completed">0</h3>
+                            <small>今日完成单元</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <div class="stats-card">
+                            <h3 class="text-danger" id="dont-know-count">0</h3>
+                            <small>"我不会"单词</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="stats-card">
+                            <h3 class="text-purple" id="current-unit">1</h3>
+                            <small>当前单元</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <a href="/practice" class="btn btn-primary btn-lg me-3">🎯 开始练习</a>
+                    <button class="btn btn-outline-primary btn-lg" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                        📤 上传单词库
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 功能介绍 -->
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">🧠 智能复习</h5>
+                        <p class="card-text">基于艾宾浩斯遗忘曲线，在最佳时机提醒你复习，提高记忆效率。</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">🎯 多种练习模式</h5>
+                        <p class="card-text">中译英拼写练习和英译中选择题，全方位提升你的单词掌握能力。</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">🤔 "我不会"功能</h5>
+                        <p class="card-text">困难单词一键标记，系统自动加强复习频率。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 上传模态框 -->
+<div class="modal fade" id="uploadModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">📤 上传单词库</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="upload-form" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="file-input" class="form-label">选择文件</label>
+                        <input type="file" class="form-control" id="file-input" name="file" accept=".pdf,.txt,.doc,.docx">
+                        <div class="form-text">支持PDF、TXT、DOC、DOCX格式</div>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted">
+                            <strong>文件格式要求：</strong><br>
+                            • PDF文件：每行一个单词对，格式为 "英文 中文"<br>
+                            • 文本文件：AI会自动识别并提取英文单词和中文翻译
+                        </small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="upload-btn">上传</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 加载统计数据
+async function loadStats() {
+    try {
+        const response = await fetch('/api/stats');
+        const data = await response.json();
+        
+        document.getElementById('total-words').textContent = data.total_words;
+        document.getElementById('learned-words').textContent = data.learned_words;
+        document.getElementById('review-words').textContent = data.review_words;
+        document.getElementById('units-completed').textContent = data.units_completed_today;
+        
+        if (data.user_stats) {
+            document.getElementById('user-points').textContent = data.user_stats.total_points;
+            document.getElementById('consecutive-days').textContent = data.user_stats.consecutive_days;
+            document.getElementById('dont-know-count').textContent = data.user_stats.dont_know_count;
+            document.getElementById('current-unit').textContent = data.user_stats.current_unit;
+            
+            // 更新签到按钮状态
+            const checkInBtn = document.getElementById('check-in-btn');
+            if (data.user_stats.check_in_today) {
+                checkInBtn.textContent = '✅ 今日已签到';
+                checkInBtn.disabled = true;
+                checkInBtn.className = 'btn btn-success btn-lg';
+            }
+        }
+    } catch (error) {
+        console.error('加载统计数据失败:', error);
+    }
+}
+
+// 签到功能
+document.getElementById('check-in-btn').addEventListener('click', async function() {
+    try {
+        const response = await fetch('/api/check_in', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            this.textContent = '✅ 今日已签到';
+            this.disabled = true;
+            this.className = 'btn btn-success btn-lg';
+            
+            // 显示成功消息
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-success alert-dismissible fade show mt-3';
+            alertDiv.innerHTML = `
+                ${result.message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.querySelector('.col-md-8').insertBefore(alertDiv, document.querySelector('.col-md-8').firstChild);
+            
+            // 重新加载统计数据
+            loadStats();
+        } else {
+            alert(result.message);
+        }
+    } catch (error) {
+        alert('签到失败，请重试');
+    }
+});
+
+// 上传功能
+document.getElementById('upload-btn').addEventListener('click', async function() {
+    const fileInput = document.getElementById('file-input');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        alert('请选择文件');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+        const response = await fetch('/upload', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(result.message);
+            bootstrap.Modal.getInstance(document.getElementById('uploadModal')).hide();
+            loadStats(); // 重新加载统计数据
+        } else {
+            alert(result.message || '上传失败');
+        }
+    } catch (error) {
+        alert('上传失败，请重试');
+    }
+});
+
+// 页面加载时获取统计数据
+loadStats();
+</script>
+{% endblock %}
