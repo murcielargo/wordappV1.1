@@ -1,0 +1,363 @@
+{% extends "base.html" %}
+
+{% block title %}练习 - 背单词应用{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <!-- 练习模式选择 -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="mb-3">选择练习模式</h5>
+                <div class="btn-group w-100" role="group" id="mode-selector">
+                    <input type="radio" class="btn-check" name="practice-mode" id="mode-mixed" value="mixed" checked>
+                    <label class="btn btn-outline-primary" for="mode-mixed">混合模式</label>
+                    
+                    <input type="radio" class="btn-check" name="practice-mode" id="mode-chinese-to-english" value="chinese_to_english">
+                    <label class="btn btn-outline-success" for="mode-chinese-to-english">中→英（拼写）</label>
+                    
+                    <input type="radio" class="btn-check" name="practice-mode" id="mode-english-to-chinese" value="english_to_chinese">
+                    <label class="btn btn-outline-info" for="mode-english-to-chinese">英→中（选择）</label>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 进度条 -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span><strong>当前单元进度</strong></span>
+                    <span id="progress-text">0/20</span>
+                </div>
+                <div class="progress">
+                    <div class="progress-bar" role="progressbar" style="width: 0%" id="progress-bar"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 题目区域 -->
+        <div class="card mb-4">
+            <div class="card-body question-card" id="question-area">
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">加载中...</span>
+                    </div>
+                    <p class="mt-2">正在加载题目...</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 答案区域 -->
+        <div class="card">
+            <div class="card-body" id="answer-area">
+                <!-- 动态加载答案输入区域 -->
+            </div>
+        </div>
+        
+        <!-- 结果提示 -->
+        <div id="result-area" class="mt-3" style="display: none;"></div>
+        
+        <!-- 控制按钮 -->
+        <div class="text-center mt-4">
+            <button class="btn btn-success btn-lg" id="submit-btn" style="display: none;">提交答案</button>
+            <button class="btn btn-danger btn-lg me-2" id="dont-know-btn" style="display: none;">🤔 我不会</button>
+            <button class="btn btn-primary btn-lg" id="next-btn" style="display: none;">下一题</button>
+            <a href="/" class="btn btn-outline-secondary btn-lg">返回首页</a>
+        </div>
+    </div>
+</div>
+
+<!-- 单元完成祝贺模态框 -->
+<div class="modal fade" id="congratsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-body text-center celebration">
+                <div class="mb-4">
+                    <h1 class="text-primary">🎉 恭喜你！</h1>
+                    <h3 id="congrats-text">你今天完成了第1个单元！</h3>
+                </div>
+                <div class="mb-4">
+                    <div class="display-1">🏆</div>
+                </div>
+                <p class="lead">继续保持这个节奏，你会越来越棒的！</p>
+                <button type="button" class="btn btn-primary btn-lg" data-bs-dismiss="modal">继续学习</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentQuestion = null;
+let userAnswer = '';
+let isAnswered = false;
+
+// 获取当前选择的练习模式
+function getCurrentMode() {
+    const checkedMode = document.querySelector('input[name="practice-mode"]:checked');
+    return checkedMode ? checkedMode.value : 'mixed';
+}
+
+// 加载新题目
+async function loadQuestion() {
+    try {
+        const mode = getCurrentMode();
+        const response = await fetch(`/api/get_question?mode=${mode}`);
+        const question = await response.json();
+        
+        if (question.message) {
+            document.getElementById('question-area').innerHTML = `
+                <div class="text-center">
+                    <h3>🎉 ${question.message}</h3>
+                    <p>恭喜你完成了所有单词的学习！</p>
+                </div>
+            `;
+            return;
+        }
+        
+        currentQuestion = question;
+        isAnswered = false;
+        
+        // 显示题目
+        document.getElementById('question-area').innerHTML = `
+            <div class="text-center">
+                <h2 class="mb-4">${question.question}</h2>
+                <small class="text-muted">模式: ${getModeText(question.mode)}</small>
+            </div>
+        `;
+        
+        // 根据题目类型显示答案区域
+        if (question.type === 'input') {
+            document.getElementById('answer-area').innerHTML = `
+                <div class="text-center">
+                    <input type="text" class="form-control form-control-lg text-center" 
+                           id="answer-input" placeholder="${question.placeholder}" 
+                           style="max-width: 400px; margin: 0 auto;">
+                </div>
+            `;
+            
+            // 添加回车提交功能
+            document.getElementById('answer-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !isAnswered) {
+                    submitAnswer();
+                }
+            });
+            
+            // 自动聚焦
+            document.getElementById('answer-input').focus();
+        } else {
+            // 选择题
+            const optionsHtml = question.options.map((option, index) => `
+                <button class="btn btn-outline-primary btn-lg option-btn me-2 mb-2" 
+                        data-option="${option}">${option}</button>
+            `).join('');
+            
+            document.getElementById('answer-area').innerHTML = `
+                <div class="text-center">
+                    <div class="options-container">
+                        ${optionsHtml}
+                    </div>
+                </div>
+            `;
+            
+            // 添加选项点击事件
+            document.querySelectorAll('.option-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    if (!isAnswered) {
+                        // 清除其他选项的选中状态
+                        document.querySelectorAll('.option-btn').forEach(b => {
+                            b.classList.remove('btn-primary');
+                            b.classList.add('btn-outline-primary');
+                        });
+                        
+                        // 标记当前选项为选中
+                        this.classList.remove('btn-outline-primary');
+                        this.classList.add('btn-primary');
+                        
+                        userAnswer = this.dataset.option;
+                    }
+                });
+            });
+        }
+        
+        // 显示控制按钮
+        document.getElementById('submit-btn').style.display = 'inline-block';
+        document.getElementById('dont-know-btn').style.display = 'inline-block';
+        document.getElementById('next-btn').style.display = 'none';
+        document.getElementById('result-area').style.display = 'none';
+        
+    } catch (error) {
+        console.error('加载题目失败:', error);
+        document.getElementById('question-area').innerHTML = `
+            <div class="text-center text-danger">
+                <h3>加载失败</h3>
+                <p>请刷新页面重试</p>
+            </div>
+        `;
+    }
+}
+
+// 提交答案
+async function submitAnswer() {
+    if (isAnswered) return;
+    
+    // 获取用户答案
+    if (currentQuestion.type === 'input') {
+        userAnswer = document.getElementById('answer-input').value.trim();
+    }
+    
+    if (!userAnswer) {
+        alert('请输入或选择答案');
+        return;
+    }
+    
+    isAnswered = true;
+    
+    try {
+        const response = await fetch('/api/submit_answer', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                word_id: currentQuestion.word_id,
+                answer: userAnswer,
+                correct_answer: currentQuestion.correct_answer
+            })
+        });
+        
+        const result = await response.json();
+        
+        // 显示结果
+        const resultArea = document.getElementById('result-area');
+        if (result.correct) {
+            resultArea.innerHTML = `
+                <div class="alert alert-success text-center">
+                    <h4>✅ 正确！</h4>
+                    <p>答案：${result.correct_answer}</p>
+                </div>
+            `;
+        } else {
+            resultArea.innerHTML = `
+                <div class="alert alert-danger text-center">
+                    <h4>❌ 错误</h4>
+                    <p>正确答案：${result.correct_answer}</p>
+                    <p>你的答案：${userAnswer}</p>
+                </div>
+            `;
+        }
+        resultArea.style.display = 'block';
+        
+        // 更新进度
+        if (result.unit_progress) {
+            updateProgress(result.unit_progress);
+            
+            if (result.unit_progress.unit_completed) {
+                showCongratulations(result.unit_progress.unit_number);
+            }
+        }
+        
+        // 更新按钮状态
+        document.getElementById('submit-btn').style.display = 'none';
+        document.getElementById('dont-know-btn').style.display = 'none';
+        document.getElementById('next-btn').style.display = 'inline-block';
+        
+    } catch (error) {
+        console.error('提交答案失败:', error);
+        alert('提交失败，请重试');
+        isAnswered = false;
+    }
+}
+
+// "我不会"功能
+async function dontKnow() {
+    if (isAnswered) return;
+    
+    try {
+        const response = await fetch('/api/dont_know', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                word_id: currentQuestion.word_id
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // 显示结果
+            const resultArea = document.getElementById('result-area');
+            resultArea.innerHTML = `
+                <div class="alert alert-warning text-center">
+                    <h4>🤔 已标记为"我不会"</h4>
+                    <p>正确答案：${currentQuestion.correct_answer}</p>
+                    <p>${result.message}</p>
+                </div>
+            `;
+            resultArea.style.display = 'block';
+            
+            isAnswered = true;
+            
+            // 更新按钮状态
+            document.getElementById('submit-btn').style.display = 'none';
+            document.getElementById('dont-know-btn').style.display = 'none';
+            document.getElementById('next-btn').style.display = 'inline-block';
+        } else {
+            alert(result.message);
+        }
+    } catch (error) {
+        console.error('标记失败:', error);
+        alert('标记失败，请重试');
+    }
+}
+
+// 更新进度条
+function updateProgress(progress) {
+    const progressText = document.getElementById('progress-text');
+    const progressBar = document.getElementById('progress-bar');
+    
+    progressText.textContent = progress.progress;
+    
+    // 计算进度百分比
+    const [completed, total] = progress.progress.split('/').map(Number);
+    const percentage = (completed / total) * 100;
+    progressBar.style.width = percentage + '%';
+}
+
+// 显示祝贺模态框
+function showCongratulations(unitNumber) {
+    document.getElementById('congrats-text').textContent = `你今天完成了第${unitNumber}个单元！`;
+    const modal = new bootstrap.Modal(document.getElementById('congratsModal'));
+    modal.show();
+}
+
+// 获取模式文本
+function getModeText(mode) {
+    switch(mode) {
+        case 'chinese_to_english': return '中译英拼写';
+        case 'english_to_chinese': return '英译中选择';
+        default: return '混合模式';
+    }
+}
+
+// 事件监听器
+document.getElementById('submit-btn').addEventListener('click', submitAnswer);
+document.getElementById('dont-know-btn').addEventListener('click', dontKnow);
+document.getElementById('next-btn').addEventListener('click', loadQuestion);
+
+// 模式切换事件
+document.querySelectorAll('input[name="practice-mode"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        if (!isAnswered) {
+            loadQuestion();
+        }
+    });
+});
+
+// 页面加载时开始第一题
+loadQuestion();
+</script>
+{% endblock %}
