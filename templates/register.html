@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}注册 - 背单词应用{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="card-title text-center mb-4">📝 注册新账号</h2>
+                
+                <form id="register-form">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">用户名</label>
+                        <input type="text" class="form-control" id="username" required minlength="3">
+                        <div class="form-text">至少3个字符</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">密码</label>
+                        <input type="password" class="form-control" id="password" required minlength="6">
+                        <div class="form-text">至少6个字符</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirm-password" class="form-label">确认密码</label>
+                        <input type="password" class="form-control" id="confirm-password" required>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">注册</button>
+                </form>
+                
+                <div class="text-center mt-3">
+                    <p>已有账号？<a href="/login">立即登录</a></p>
+                </div>
+                
+                <div id="message" class="mt-3" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('register-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirm-password').value;
+    const messageDiv = document.getElementById('message');
+    
+    if (password !== confirmPassword) {
+        messageDiv.className = 'alert alert-danger';
+        messageDiv.textContent = '两次输入的密码不一致';
+        messageDiv.style.display = 'block';
+        return;
+    }
+    
+    try {
+        const response = await fetch('/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username, password })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            messageDiv.className = 'alert alert-success';
+            messageDiv.textContent = result.message;
+            messageDiv.style.display = 'block';
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1000);
+        } else {
+            messageDiv.className = 'alert alert-danger';
+            messageDiv.textContent = result.message;
+            messageDiv.style.display = 'block';
+        }
+    } catch (error) {
+        messageDiv.className = 'alert alert-danger';
+        messageDiv.textContent = '注册失败，请重试';
+        messageDiv.style.display = 'block';
+    }
+});
+</script>
+{% endblock %}
