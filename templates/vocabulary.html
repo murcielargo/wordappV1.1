@@ -1,0 +1,663 @@
+{% extends "base.html" %}
+
+{% block title %}词汇管理 - 背单词应用{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 导航栏 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav class="navbar navbar-expand-lg navbar-light bg-light rounded">
+                <div class="container-fluid">
+                    <span class="navbar-brand mb-0 h1">📚 词汇管理</span>
+                    <div class="navbar-nav ms-auto">
+                        <a class="nav-link" href="/">🏠 返回首页</a>
+                        <a class="nav-link" href="/practice">📝 开始练习</a>
+                    </div>
+                </div>
+            </nav>
+        </div>
+    </div>
+    
+    <!-- 搜索和操作栏 -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="input-group">
+                <input type="text" class="form-control" id="search-input" placeholder="搜索单词...">
+                <button class="btn btn-outline-secondary" type="button" id="search-btn">
+                    <i class="fas fa-search"></i> 搜索
+                </button>
+            </div>
+        </div>
+        <div class="col-md-6 text-end">
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addWordModal">
+                <i class="fas fa-plus"></i> 添加单词
+            </button>
+            <button class="btn btn-info ms-2" data-bs-toggle="modal" data-bs-target="#batchAddModal">
+                <i class="fas fa-upload"></i> 批量添加
+            </button>
+        </div>
+    </div>
+    
+    <!-- 单词列表 -->
+    <div class="row" id="words-container">
+        <!-- 动态加载单词卡片 -->
+    </div>
+    
+    <!-- 分页 -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <nav>
+                <ul class="pagination justify-content-center" id="pagination">
+                    <!-- 动态生成分页 -->
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<!-- 添加单词模态框 -->
+<div class="modal fade" id="addWordModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">添加新单词</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="add-word-form">
+                    <div class="mb-3">
+                        <label for="add-english" class="form-label">英文单词 *</label>
+                        <input type="text" class="form-control" id="add-english" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add-chinese" class="form-label">中文释义 *</label>
+                        <input type="text" class="form-control" id="add-chinese" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add-phonetic" class="form-label">音标</label>
+                        <input type="text" class="form-control" id="add-phonetic" placeholder="例如: /ˈhæpɪ/">
+                    </div>
+                    <div class="mb-3">
+                        <label for="add-part-of-speech" class="form-label">词性</label>
+                        <select class="form-select" id="add-part-of-speech">
+                            <option value="">选择词性</option>
+                            <option value="n.">名词 (n.)</option>
+                            <option value="v.">动词 (v.)</option>
+                            <option value="adj.">形容词 (adj.)</option>
+                            <option value="adv.">副词 (adv.)</option>
+                            <option value="prep.">介词 (prep.)</option>
+                            <option value="conj.">连词 (conj.)</option>
+                            <option value="pron.">代词 (pron.)</option>
+                            <option value="int.">感叹词 (int.)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add-example" class="form-label">例句</label>
+                        <textarea class="form-control" id="add-example" rows="2" placeholder="英文例句"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-info" id="generate-ai-details">
+                            <i class="fas fa-magic"></i> AI生成详细信息
+                        </button>
+                        <small class="text-muted d-block mt-1">基于英文单词自动生成音标、词性和例句</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="save-word-btn">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑单词模态框 -->
+<div class="modal fade" id="editWordModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">编辑单词</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-word-form">
+                    <input type="hidden" id="edit-word-id">
+                    <div class="mb-3">
+                        <label for="edit-english" class="form-label">英文单词 *</label>
+                        <input type="text" class="form-control" id="edit-english" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-chinese" class="form-label">中文释义 *</label>
+                        <input type="text" class="form-control" id="edit-chinese" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-phonetic" class="form-label">音标</label>
+                        <input type="text" class="form-control" id="edit-phonetic">
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-part-of-speech" class="form-label">词性</label>
+                        <select class="form-select" id="edit-part-of-speech">
+                            <option value="">选择词性</option>
+                            <option value="n.">名词 (n.)</option>
+                            <option value="v.">动词 (v.)</option>
+                            <option value="adj.">形容词 (adj.)</option>
+                            <option value="adv.">副词 (adv.)</option>
+                            <option value="prep.">介词 (prep.)</option>
+                            <option value="conj.">连词 (conj.)</option>
+                            <option value="pron.">代词 (pron.)</option>
+                            <option value="int.">感叹词 (int.)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-example" class="form-label">例句</label>
+                        <textarea class="form-control" id="edit-example" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="update-word-btn">更新</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 批量添加模态框 -->
+<div class="modal fade" id="batchAddModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">批量添加单词</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="batch-words" class="form-label">单词列表</label>
+                    <textarea class="form-control" id="batch-words" rows="10" 
+                              placeholder="请按以下格式输入，每行一个单词：&#10;apple,苹果&#10;banana,香蕉&#10;cat,猫&#10;&#10;或者：&#10;apple|苹果|/ˈæpl/|n.|An apple is a fruit.&#10;banana|香蕉|/bəˈnænə/|n.|I like to eat bananas."></textarea>
+                </div>
+                <div class="alert alert-info">
+                    <strong>格式说明：</strong><br>
+                    • 简单格式：<code>英文,中文</code><br>
+                    • 完整格式：<code>英文|中文|音标|词性|例句</code><br>
+                    • 每行一个单词
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="batch-add-btn">批量添加</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentPage = 1;
+let currentSearch = '';
+const wordsPerPage = 12;
+
+// 加载单词列表
+async function loadWords(page = 1, search = '') {
+    try {
+        const response = await fetch(`/api/words?page=${page}&per_page=${wordsPerPage}&search=${encodeURIComponent(search)}`);
+        const data = await response.json();
+        
+        displayWords(data.words);
+        displayPagination(data.pagination);
+        
+        currentPage = page;
+        currentSearch = search;
+    } catch (error) {
+        console.error('加载单词失败:', error);
+        document.getElementById('words-container').innerHTML = `
+            <div class="col-12">
+                <div class="alert alert-danger text-center">
+                    <h4>加载失败</h4>
+                    <p>请刷新页面重试</p>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// 显示单词卡片
+function displayWords(words) {
+    const container = document.getElementById('words-container');
+    
+    if (words.length === 0) {
+        container.innerHTML = `
+            <div class="col-12">
+                <div class="alert alert-info text-center">
+                    <h4>暂无单词</h4>
+                    <p>点击"添加单词"开始建立你的词汇库</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    const wordsHtml = words.map(word => `
+        <div class="col-md-4 col-lg-3 mb-3">
+            <div class="card h-100 word-card">
+                <div class="card-body">
+                    <h5 class="card-title">${word.english}</h5>
+                    <p class="card-text">
+                        <strong>${word.chinese}</strong><br>
+                        ${word.phonetic ? `<small class="text-muted">${word.phonetic}</small><br>` : ''}
+                        ${word.part_of_speech ? `<span class="badge bg-secondary">${word.part_of_speech}</span>` : ''}
+                    </p>
+                    ${word.example ? `<p class="card-text"><small class="text-muted">${word.example}</small></p>` : ''}
+                </div>
+                <div class="card-footer bg-transparent">
+                    <div class="btn-group w-100" role="group">
+                        <button class="btn btn-outline-primary btn-sm" onclick="editWord(${word.id})">
+                            <i class="fas fa-edit"></i> 编辑
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="deleteWord(${word.id}, '${word.english}')">
+                            <i class="fas fa-trash"></i> 删除
+                        </button>
+                        <button class="btn btn-outline-info btn-sm" onclick="generateAIDetails(${word.id})">
+                            <i class="fas fa-magic"></i> AI
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    container.innerHTML = wordsHtml;
+}
+
+// 显示分页
+function displayPagination(pagination) {
+    const paginationContainer = document.getElementById('pagination');
+    
+    if (pagination.total_pages <= 1) {
+        paginationContainer.innerHTML = '';
+        return;
+    }
+    
+    let paginationHtml = '';
+    
+    // 上一页
+    if (pagination.has_prev) {
+        paginationHtml += `
+            <li class="page-item">
+                <a class="page-link" href="#" onclick="loadWords(${pagination.current_page - 1}, '${currentSearch}')">
+                    上一页
+                </a>
+            </li>
+        `;
+    }
+    
+    // 页码
+    const startPage = Math.max(1, pagination.current_page - 2);
+    const endPage = Math.min(pagination.total_pages, pagination.current_page + 2);
+    
+    for (let i = startPage; i <= endPage; i++) {
+        paginationHtml += `
+            <li class="page-item ${i === pagination.current_page ? 'active' : ''}">
+                <a class="page-link" href="#" onclick="loadWords(${i}, '${currentSearch}')">
+                    ${i}
+                </a>
+            </li>
+        `;
+    }
+    
+    // 下一页
+    if (pagination.has_next) {
+        paginationHtml += `
+            <li class="page-item">
+                <a class="page-link" href="#" onclick="loadWords(${pagination.current_page + 1}, '${currentSearch}')">
+                    下一页
+                </a>
+            </li>
+        `;
+    }
+    
+    paginationContainer.innerHTML = paginationHtml;
+}
+
+// 搜索单词
+function searchWords() {
+    const searchTerm = document.getElementById('search-input').value.trim();
+    loadWords(1, searchTerm);
+}
+
+// 添加单词
+async function addWord() {
+    const english = document.getElementById('add-english').value.trim();
+    const chinese = document.getElementById('add-chinese').value.trim();
+    const phonetic = document.getElementById('add-phonetic').value.trim();
+    const partOfSpeech = document.getElementById('add-part-of-speech').value;
+    const example = document.getElementById('add-example').value.trim();
+    
+    if (!english || !chinese) {
+        alert('请填写英文单词和中文释义');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/words', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                english: english,
+                chinese: chinese,
+                phonetic: phonetic,
+                part_of_speech: partOfSpeech,
+                example: example
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // 关闭模态框
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addWordModal'));
+            modal.hide();
+            
+            // 清空表单
+            document.getElementById('add-word-form').reset();
+            
+            // 重新加载单词列表
+            loadWords(currentPage, currentSearch);
+            
+            alert('单词添加成功！');
+        } else {
+            alert(result.message || '添加失败');
+        }
+    } catch (error) {
+        console.error('添加单词失败:', error);
+        alert('添加失败，请重试');
+    }
+}
+
+// 编辑单词
+async function editWord(wordId) {
+    try {
+        // 获取单词详情
+        const response = await fetch(`/api/words?search=id:${wordId}`);
+        const data = await response.json();
+        
+        if (data.words.length > 0) {
+            const word = data.words[0];
+            
+            // 填充编辑表单
+            document.getElementById('edit-word-id').value = word.id;
+            document.getElementById('edit-english').value = word.english;
+            document.getElementById('edit-chinese').value = word.chinese;
+            document.getElementById('edit-phonetic').value = word.phonetic || '';
+            document.getElementById('edit-part-of-speech').value = word.part_of_speech || '';
+            document.getElementById('edit-example').value = word.example || '';
+            
+            // 显示编辑模态框
+            const modal = new bootstrap.Modal(document.getElementById('editWordModal'));
+            modal.show();
+        }
+    } catch (error) {
+        console.error('获取单词详情失败:', error);
+        alert('获取单词详情失败');
+    }
+}
+
+// 更新单词
+async function updateWord() {
+    const wordId = document.getElementById('edit-word-id').value;
+    const english = document.getElementById('edit-english').value.trim();
+    const chinese = document.getElementById('edit-chinese').value.trim();
+    const phonetic = document.getElementById('edit-phonetic').value.trim();
+    const partOfSpeech = document.getElementById('edit-part-of-speech').value;
+    const example = document.getElementById('edit-example').value.trim();
+    
+    if (!english || !chinese) {
+        alert('请填写英文单词和中文释义');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/words/${wordId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                english: english,
+                chinese: chinese,
+                phonetic: phonetic,
+                part_of_speech: partOfSpeech,
+                example: example
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // 关闭模态框
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editWordModal'));
+            modal.hide();
+            
+            // 重新加载单词列表
+            loadWords(currentPage, currentSearch);
+            
+            alert('单词更新成功！');
+        } else {
+            alert(result.message || '更新失败');
+        }
+    } catch (error) {
+        console.error('更新单词失败:', error);
+        alert('更新失败，请重试');
+    }
+}
+
+// 删除单词
+async function deleteWord(wordId, english) {
+    if (!confirm(`确定要删除单词 "${english}" 吗？`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/words/${wordId}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // 重新加载单词列表
+            loadWords(currentPage, currentSearch);
+            alert('单词删除成功！');
+        } else {
+            alert(result.message || '删除失败');
+        }
+    } catch (error) {
+        console.error('删除单词失败:', error);
+        alert('删除失败，请重试');
+    }
+}
+
+// 批量添加单词
+async function batchAddWords() {
+    const wordsText = document.getElementById('batch-words').value.trim();
+    
+    if (!wordsText) {
+        alert('请输入单词列表');
+        return;
+    }
+    
+    // 解析单词列表
+    const lines = wordsText.split('\n').filter(line => line.trim());
+    const words = [];
+    
+    for (const line of lines) {
+        const trimmedLine = line.trim();
+        if (!trimmedLine) continue;
+        
+        let word;
+        if (trimmedLine.includes('|')) {
+            // 完整格式
+            const parts = trimmedLine.split('|').map(p => p.trim());
+            if (parts.length >= 2) {
+                word = {
+                    english: parts[0],
+                    chinese: parts[1],
+                    phonetic: parts[2] || '',
+                    part_of_speech: parts[3] || '',
+                    example: parts[4] || ''
+                };
+            }
+        } else if (trimmedLine.includes(',')) {
+            // 简单格式
+            const parts = trimmedLine.split(',').map(p => p.trim());
+            if (parts.length >= 2) {
+                word = {
+                    english: parts[0],
+                    chinese: parts[1],
+                    phonetic: '',
+                    part_of_speech: '',
+                    example: ''
+                };
+            }
+        }
+        
+        if (word && word.english && word.chinese) {
+            words.push(word);
+        }
+    }
+    
+    if (words.length === 0) {
+        alert('没有找到有效的单词格式');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/words/batch', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ words: words })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // 关闭模态框
+            const modal = bootstrap.Modal.getInstance(document.getElementById('batchAddModal'));
+            modal.hide();
+            
+            // 清空表单
+            document.getElementById('batch-words').value = '';
+            
+            // 重新加载单词列表
+            loadWords(1, '');
+            
+            alert(`成功添加 ${result.added_count} 个单词！`);
+        } else {
+            alert(result.message || '批量添加失败');
+        }
+    } catch (error) {
+        console.error('批量添加失败:', error);
+        alert('批量添加失败，请重试');
+    }
+}
+
+// AI生成单词详细信息
+async function generateAIDetailsForAdd() {
+    const english = document.getElementById('add-english').value.trim();
+    
+    if (!english) {
+        alert('请先输入英文单词');
+        return;
+    }
+    
+    const btn = document.getElementById('generate-ai-details');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中...';
+    btn.disabled = true;
+    
+    try {
+        const response = await fetch('/api/generate_word_details', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ english: english })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // 填充生成的信息
+            if (result.phonetic) {
+                document.getElementById('add-phonetic').value = result.phonetic;
+            }
+            if (result.part_of_speech) {
+                document.getElementById('add-part-of-speech').value = result.part_of_speech;
+            }
+            if (result.example) {
+                document.getElementById('add-example').value = result.example;
+            }
+            if (result.chinese) {
+                document.getElementById('add-chinese').value = result.chinese;
+            }
+        } else {
+            alert(result.message || 'AI生成失败');
+        }
+    } catch (error) {
+        console.error('AI生成失败:', error);
+        alert('AI生成失败，请重试');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+// 为现有单词生成AI详细信息
+async function generateAIDetails(wordId) {
+    if (!confirm('确定要使用AI重新生成这个单词的详细信息吗？')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/words/${wordId}/generate-details`, {
+            method: 'POST'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // 重新加载单词列表
+            loadWords(currentPage, currentSearch);
+            alert('AI生成成功！');
+        } else {
+            alert(result.message || 'AI生成失败');
+        }
+    } catch (error) {
+        console.error('AI生成失败:', error);
+        alert('AI生成失败，请重试');
+    }
+}
+
+// 事件监听器
+document.getElementById('search-btn').addEventListener('click', searchWords);
+document.getElementById('search-input').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        searchWords();
+    }
+});
+
+document.getElementById('save-word-btn').addEventListener('click', addWord);
+document.getElementById('update-word-btn').addEventListener('click', updateWord);
+document.getElementById('batch-add-btn').addEventListener('click', batchAddWords);
+document.getElementById('generate-ai-details').addEventListener('click', generateAIDetailsForAdd);
+
+// 页面加载时加载单词列表
+loadWords();
+</script>
+{% endblock %}
