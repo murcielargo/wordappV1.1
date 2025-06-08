@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}登录 - 背单词应用{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="card-title text-center mb-4">📚 登录背单词应用</h2>
+                
+                <form id="login-form">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">用户名</label>
+                        <input type="text" class="form-control" id="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">密码</label>
+                        <input type="password" class="form-control" id="password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">登录</button>
+                </form>
+                
+                <div class="text-center mt-3">
+                    <p>还没有账号？<a href="/register">立即注册</a></p>
+                </div>
+                
+                <div id="message" class="mt-3" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('login-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const messageDiv = document.getElementById('message');
+    
+    try {
+        const response = await fetch('/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username, password })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            messageDiv.className = 'alert alert-success';
+            messageDiv.textContent = result.message;
+            messageDiv.style.display = 'block';
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1000);
+        } else {
+            messageDiv.className = 'alert alert-danger';
+            messageDiv.textContent = result.message;
+            messageDiv.style.display = 'block';
+        }
+    } catch (error) {
+        messageDiv.className = 'alert alert-danger';
+        messageDiv.textContent = '登录失败，请重试';
+        messageDiv.style.display = 'block';
+    }
+});
+</script>
+{% endblock %}
